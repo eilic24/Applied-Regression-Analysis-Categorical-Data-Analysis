@@ -1,65 +1,192 @@
 ---
-title: "Stats Project"
-author: "Ela Ilic"
-date: "2024-11-14"
+title: "Project"
+author: "Ela"
+due date: "12-06-2023"
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
-access to resources, motivation level, peer influence, distance from home, learning disabilities
-teacher quality, parental involvement
 ```{r}
 library(readr)
-StudentPerformance <- read.csv("StudentPerformanceFactors.csv")
-Perf <- StudentPerformance %>% select(Exam_Score, Hours_Studied, Attendance, Parental_Involvement, Extracurricular_Activities, Sleep_Hours, Internet_Access, Tutoring_Sessions, Family_Income, School_Type, Physical_Activity, Parental_Education_Level, Gender, Teacher_Quality, Previous_Scores)
-mod <- lm(Exam_Score ~., Perf)
-summary(mod)
-plot(mod, 1)
-plot(mod, 2)
+library(tidyverse)
+#Sports cars
+Dataset <- read_csv("~/Desktop/Data Science Project/Dataset.csv")
+Dataset %>% 
+  glimpse()
+#US sales
+Dataset_2 <- read_csv("~/Desktop/Data Science Project/Dataset 2.csv")
+Dataset_2 %>% 
+  glimpse()
 ```
 
-
+Join Datasets
 ```{r}
-summary(StudentPerformance)
-min(StudentPerformance$Exam_Score)
-max(StudentPerformance$Exam_Score)
-mean(StudentPerformance$Exam_Score)
-quantile(StudentPerformance$Exam_Score)
+Dataset <- Dataset %>% 
+  mutate(Model = paste(`Car Make`, `Car Model`, sep = " "))
+Dataset <- Dataset %>% 
+  distinct(Model, .keep_all = TRUE)
+Dataset_2$...14 <- NULL
+Dataset_2$...15 <- NULL
+merge <- left_join(Dataset_2, Dataset, by = "Model")
+
+Altered_Dataset <- Altered_Dataset %>%
+  mutate(Horsepower = gsub("\\+", "", Horsepower))
+Altered_Dataset$Horsepower <- as.numeric(Altered_Dataset$Horsepower)
 ```
 
-
+1) How many sports cars are sold in the US? Are there American car models not sold yearly?
 ```{r}
-all <- lm(Exam_Score ~., StudentPerformance)
-summary(all)
-VIF(all)
+US_specific <- merge %>% 
+  filter_all(all_vars(!is.na(.)))
+num1 <- Dataset_2 %>% 
+  count()
+num2 <- US_specific %>% 
+count()
+(num2/num1)*100
+#18 sports cars are sold in US
+#Remaining 289 models are not sold
+```
 
-library(ggplot2)
+2) Do the cars with bigger engines have more horsepower? Does the engine size effect the 0-60 MPH time?
+```{r}
+Compare1 <- Altered_Dataset %>% 
+  select(Model, `Engine Size (L)`, Horsepower, `0-60 MPH Time (seconds)`) 
 
+Engines <- Compare1 %>% 
+  arrange(desc(`Engine Size (L)`)) %>% 
+  na.omit()
+print(Engines)
 
-# Step 5: Create a histogram for the Exam_Score column
-ggplot(StudentPerformance, aes(x = Exam_Score)) +
-  geom_histogram(binwidth = 5, fill = "red", color = "black") +
-  theme_minimal() +
+Horsepower <- Compare1 %>% 
+  arrange(desc(Horsepower)) 
+print(Horsepower)
+
+Sixty_Seconds <- Compare1 %>% 
+  arrange((`0-60 MPH Time (seconds)`)) 
+print(Sixty_Seconds)
+
+#There does not seem to be a correlation between cars with big engines and the car's horsepower and a small overlap in cars with bigger engine sizes and the car's acceleration for 0-60 MPH time.
+```
+
+3) Are the cars with the largest horsepower more expensive?
+```{r}
+Compare2 <- Altered_Dataset %>% 
+  select(Model, Horsepower, `Price (in USD)`) 
+
+Horsepower <- Compare2 %>% 
+  arrange(desc(Horsepower)) 
+print(Horsepower)
+
+Price <- Compare2 %>% 
+  arrange(desc(`Price (in USD)`)) 
+print(Price)
+
+#While there is some overlap, I do not think there is a correlation between cars with the largest horsepower and their price.
+```
+
+4) Which car make on average cost the most?
+```{r}
+Expensive <- Altered_Dataset %>% 
+  group_by(`Car Make`) %>% 
+  summarize(average_count = mean(`Price (in USD)`, na.rm = TRUE)) %>% 
+  rename(cars = 'Car Make')
+ggplot(Expensive, aes(x = average_count, y = cars, fill = cars)) +
+  geom_col() + 
   labs(
-    title = "Histogram of Exam Scores",
-    x = "Exam Score",
-    y = "# of Students"
+    x = "Average",
+    y = "Car Make"
+  )
+```
+
+5) How many of the cars sold in the US are amongst the cars with the top horsepower? How many are amongst the most expensive?
+```{r}
+Altered_Dataset$Horsepower <- as.numeric(Altered_Dataset$Horsepower)
+#Top Horsepower
+ggplot(US_specific, aes(x = Model, y = Horsepower, fill = Model)) +
+  geom_col() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+  labs(
+    x = "Model",
+    y = "Horsepower"
+  )
+US_specific %>% 
+  select(Model, Horsepower) %>% 
+  arrange(desc(Horsepower))
+Altered_Dataset %>% 
+  select(Model, Horsepower) %>% 
+  arrange(desc(Horsepower))
+
+#Most expensive
+ggplot(US_specific, aes(x = Model, y = `Price (in USD)`, fill = Model)) +
+  geom_col() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+  labs(
+    x = "Model",
+    y = "Price"
+  )
+US_specific %>% 
+  select(Model, `Price (in USD)`) %>% 
+  arrange(desc(`Price (in USD)`))
+Altered_Dataset %>% 
+  select(Model, `Price (in USD)`) %>% 
+  arrange(desc(`Price (in USD)`))
+#The cars sold in the US are not amongst the top fastest or most expensive cars in the world
+```
+
+6) Which car makes sold the most cars, on average, in a given month?
+```{r}
+Revised_2 <- Dataset_2 %>%
+  mutate(across(-Model, ~as.numeric(gsub(",", "", .))))
+Revised_2 <- Revised_2 %>%
+  mutate(Sales = rowMeans(across(-Model), na.rm = TRUE))
+top_sales <- Revised_2 %>% 
+   arrange(desc(Sales))
+print(top_sales)
+```
+
+Dataset 1 Chart
+```{r}
+#Top 10 most expensive sports cars
+Altered_Dataset1 <- Altered_Dataset %>% 
+  arrange(desc(`Price (in USD)`)) 
+Top <- head(Altered_Dataset1, n = 10)
+ggplot(Top, aes(x = Model, y = `Price (in USD)`, fill = Model)) +
+  geom_col()+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+  labs(
+    x = "Model",
+    y = "Price"
   )
 
-ggplot(StudentPerformance, aes(x = Exam_Score)) +
-  geom_density(fill = "orange", color = "black") + 
-  theme_minimal() +
+#Top 10 fastest sports cars
+Altered_Dataset <- Altered_Dataset %>%
+  mutate(Horsepower = gsub("\\+", "", Horsepower))
+Altered_Dataset2 <- Altered_Dataset %>% 
+  arrange((Horsepower))
+Top <- head(Altered_Dataset2, n = 10)
+ggplot(Top, aes(x = Model, y = as.numeric(Horsepower), fill = Model)) +
+  geom_col() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
   labs(
-    title = "Histogram of Exam Scores",
-    x = "Exam Score",
-    y = "Probability Density"
+    x = "Model",
+    y = "Horsepower"
   )
 ```
 
-
+Dataset 2 Chart
 ```{r}
-library(tidyverse) 
-library(regclass) 
-StudentPerformance <- read.csv("StudentPerformanceFactors.csv")
-Perf <- StudentPerformance %>% select(Exam_Score, Hours_Studied, Attendance, Extracurricular_Activities, Sleep_Hours, Internet_Access, Tutoring_Sessions, Family_Income, Teacher_Quality, School_Type, Physical_Activity, Parental_Education_Level, Parental_Involvement, Gender, Previous_Scores) 
-modbase <- lm(Exam_Score ~ ., Perf) 
-summary(modbase)
+Revised_2 <- Dataset_2 %>%
+  mutate(across(-Model, ~as.numeric(gsub(",", "", .))))
+Revised_2 <- Revised_2 %>%
+  mutate(Sales = rowMeans(across(-Model), na.rm = TRUE))
+top_sales <- Revised_2 %>% 
+  top_n(10, wt = Sales)
+ggplot(top_sales, aes(x = Sales, y = Model, fill = Model)) +
+  geom_col() +  
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+  labs(
+    x = "Sales",
+    y = "Model"
+  )
 ```
+
