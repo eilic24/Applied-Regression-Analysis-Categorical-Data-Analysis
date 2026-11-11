@@ -1,0 +1,65 @@
+---
+title: "Stats Project"
+author: "Ela Ilic"
+date: "2024-11-14"
+output: html_document
+---
+access to resources, motivation level, peer influence, distance from home, learning disabilities
+teacher quality, parental involvement
+```{r}
+library(readr)
+StudentPerformance <- read.csv("StudentPerformanceFactors.csv")
+Perf <- StudentPerformance %>% select(Exam_Score, Hours_Studied, Attendance, Parental_Involvement, Extracurricular_Activities, Sleep_Hours, Internet_Access, Tutoring_Sessions, Family_Income, School_Type, Physical_Activity, Parental_Education_Level, Gender, Teacher_Quality, Previous_Scores)
+mod <- lm(Exam_Score ~., Perf)
+summary(mod)
+plot(mod, 1)
+plot(mod, 2)
+```
+
+
+```{r}
+summary(StudentPerformance)
+min(StudentPerformance$Exam_Score)
+max(StudentPerformance$Exam_Score)
+mean(StudentPerformance$Exam_Score)
+quantile(StudentPerformance$Exam_Score)
+```
+
+
+```{r}
+all <- lm(Exam_Score ~., StudentPerformance)
+summary(all)
+VIF(all)
+
+library(ggplot2)
+
+
+# Step 5: Create a histogram for the Exam_Score column
+ggplot(StudentPerformance, aes(x = Exam_Score)) +
+  geom_histogram(binwidth = 5, fill = "red", color = "black") +
+  theme_minimal() +
+  labs(
+    title = "Histogram of Exam Scores",
+    x = "Exam Score",
+    y = "# of Students"
+  )
+
+ggplot(StudentPerformance, aes(x = Exam_Score)) +
+  geom_density(fill = "orange", color = "black") + 
+  theme_minimal() +
+  labs(
+    title = "Histogram of Exam Scores",
+    x = "Exam Score",
+    y = "Probability Density"
+  )
+```
+
+
+```{r}
+library(tidyverse) 
+library(regclass) 
+StudentPerformance <- read.csv("StudentPerformanceFactors.csv")
+Perf <- StudentPerformance %>% select(Exam_Score, Hours_Studied, Attendance, Extracurricular_Activities, Sleep_Hours, Internet_Access, Tutoring_Sessions, Family_Income, Teacher_Quality, School_Type, Physical_Activity, Parental_Education_Level, Parental_Involvement, Gender, Previous_Scores) 
+modbase <- lm(Exam_Score ~ ., Perf) 
+summary(modbase)
+```
