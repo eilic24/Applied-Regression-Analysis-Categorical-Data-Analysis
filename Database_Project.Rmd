@@ -1,0 +1,138 @@
+---
+title: "Dataset Project"
+author: "Ela Ilic"
+date: "2025-04-15"
+output: html_document
+---
+#This datatset consists of a sample size of 200 subjects and looks at the survival of patients following the admission to an ICU. The outcome variable is binary, looking at whether people survived (yes, 1) or died in the ICU (no, 0). This dataset is good for using a logistic regression model, for predicting the survival of a patient. I can also use the data to analyze the risk factors associated with ICU mortality and use different model selection methods for the regression. There are 22 variables, so I will be able to utlize predictor variables and compare variables with how they each effect the chances of survival. 
+
+#All packages
+```{r}
+#install.packages("vcd")
+#install.packages("vcdExtra")
+#install.packages("effects")
+#install.packages("lmtest")
+library(vcdExtra)
+library(effects)
+library(lmtest)
+library(ggplot2)
+library(reshape2)
+library(MASS)
+```
+
+#My data
+```{r}
+data("ICU", package = "vcdExtra")
+head(ICU)
+ICU
+```
+
+```{r}
+ICU1 <- ICU[,-c(4,20)]
+
+icu.full <- glm(died ~ ., data=ICU1, family=binomial)
+summary(icu.full)
+
+icu.mod1 <- glm(died ~ age + sex + cancer + systolic + admit + uncons, 
+  data=ICU1, 
+  family=binomial)
+summary(icu.mod1)
+
+icu.mod2 <- glm(died ~ age + cancer  + admit + uncons, 
+  data=ICU1, 
+  family=binomial)
+summary(icu.mod2)
+
+anova(icu.mod2, icu.mod1, icu.full, test="Chisq")
+
+icu.fit <- data.frame(ICU, prob=predict(icu.mod2, type="response"))
+
+risks <- ICU[, c("cancer", "admit", "uncons")]
+risks[,1] <- ifelse(risks[,1]=="Yes", "Cancer", "")
+risks[,2] <- ifelse(risks[,2]=="Emergency", "Emerg", "")
+risks[,3] <- ifelse(risks[,3]=="Yes", "Uncons", "")
+risks <- apply(risks, 1, paste, collapse="")
+risks[risks==""] <- "(none)"
+icu.fit$risks <- risks
+
+ggplot(icu.fit, aes(x=age, y=prob, color=risks)) +
+	geom_point(size=2) +
+	geom_line(size=1.25, alpha=0.5) +
+	theme_bw() + ylab("Probability of death")
+```
+
+```{r}
+ICU1 <- ICU[,-c(4,20)]
+icu.full <- glm(died ~ ., data=ICU1, family=binomial)
+icu.full
+```
+
+#Logistic Regression Model
+```{r}
+predict_reg <- predict(icu.full, type = "response")
+predict_reg
+```
+
+```{r}
+exp(coef(icu.full))
+exp(cbind(OR = coef(icu.full), confint(icu.full)))
+```
+
+```{r}
+#All code
+ICU1 <- ICU[ , -c(4, 20)]
+icu.full <- glm(died ~ ., data = ICU1, family = binomial)
+predict_probs <- predict(icu.full, type = "response")
+predicted_classes <- ifelse(predict_probs >= 0.5, 1, 0)
+conf_matrix <- table(Actual = ICU1$died, Predicted = predicted_classes)
+conf_matrix_melted <- as.data.frame(conf_matrix)
+colnames(conf_matrix_melted) <- c("Actual", "Predicted", "Count")
+#Make confusion matrix
+ggplot(conf_matrix_melted, aes(x = Actual, y = Predicted, fill = Count)) +
+  geom_tile() +
+  geom_text(aes(label = Count), color = "black", size = 6) +
+  scale_fill_gradient(low = "white", high = "blue") +
+  labs(title = "Confusion Matrix Heatmap", x = "Actual", y = "Predicted") +
+  theme_minimal()
+```
+
+#Generalized Linear Model 
+```{r}
+ICU1 <- ICU[,-c(4,20)]
+icu.full <- glm(died ~ ., data=ICU1, family=binomial)
+icu.full
+summary(icu.full)
+confint(icu.full)
+```
+
+```{r}
+data("ICU", package = "vcdExtra")
+icu_glm <- glm(died ~ age + cancer + admit, data = ICU, family = binomial)
+summary(icu_glm)
+waldtest(icu_glm)
+plot(allEffects(icu_glm))
+icu.full <- glm(died ~ ., data = ICU, family = binomial)
+anova(icu_glm, icu.full, test = "Chisq")
+```
+
+```{r}
+icu_step <- step(icu_glm, test = "LRT")
+predicted_probs <- predict(icu_step, type = 'response')
+head(predicted_probs)
+
+res <- residuals(icu_step, type = "deviance")
+head(res)
+
+fitted_vals <- predict(icu_step, type = "response")
+head(fitted_vals)
+
+predicted_classes <- ifelse(predicted_probs > 0.5, "yes", "no")
+conf_matrix <- table(Predicted = predicted_classes, Actual = ICU$died)
+conf_matrix
+```
+
+```{r}
+plot(icu.full, which = 1)
+plot(icu.full, which = 2)
+```
+
